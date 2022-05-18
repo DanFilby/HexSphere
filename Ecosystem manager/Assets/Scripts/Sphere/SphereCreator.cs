@@ -9,19 +9,51 @@ public class SphereCreator : MonoBehaviour
     Vector3[] vertices;
     Vector3[] normals;
 
+    [Range(0,6)]
+    public int divides;
+    private int prevDivides;
+
+    [Header("Splitting")]
+    public bool Split;
+    public Material Mat;
+
+    [Header("Debugging")]
+    public GameObject MarkerSphere;
+
     private void Start()
     {
-        sphere = new Mesh();
-        sphere.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        BuildMesh(ref sphere, 10);
-        gameObject.GetComponent<MeshFilter>().mesh = sphere;
+        BuildMesh(10);
 
+        prevDivides = divides;
+
+        //spliting the mesh
+        if (Split) {
+            GameObject g = new GameObject("Split-Sphere");
+            SplitMesh splitScript = g.AddComponent<SplitMesh>();
+            splitScript.Split(sphere, Mat, transform.position);
+            gameObject.SetActive(false);
+        }
+
+        //gizmos
         vertices = sphere.vertices;
         normals = sphere.normals;
     }
 
-    private void BuildMesh(ref Mesh mesh, float radius)
+    private void Update()
     {
+        if(divides != prevDivides)
+        {
+            BuildMesh(10);
+            prevDivides = divides;
+        }
+    }
+
+    private void BuildMesh(float radius)
+    {
+        sphere = new Mesh();
+        sphere.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        gameObject.GetComponent<MeshFilter>().mesh = sphere;
+
         //consts so each point is dist 1 from centre
         float X = 0.525731112119133606f * radius;
         float Z = 0.850650808352039932f * radius;
@@ -52,19 +84,37 @@ public class SphereCreator : MonoBehaviour
             triangles[i + 1] = temp;
         }
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < divides; i++)
         {
             SubDivide(ref verts, ref triangles, radius);
 
         }
 
-        mesh.vertices = verts.ToArray();
-        mesh.triangles = triangles.ToArray();
-        mesh.RecalculateNormals();
+        sphere.vertices = verts.ToArray();
+        sphere.triangles = triangles.ToArray();
+        sphere.RecalculateNormals();
 
-        Debug.Log(mesh.vertices.Length);
+        GetComponent<MeshCollider>().sharedMesh = sphere;
+
+        PlaceMarkers();
     }
 
+    private void PlaceMarkers()
+    {
+        GameObject markerParent = new GameObject("Markers");
+        markerParent.transform.parent = transform;
+
+        int index = 0;
+        foreach (var vert in sphere.vertices)
+        {
+            GameObject g = Instantiate(MarkerSphere,vert,Quaternion.identity);
+            g.transform.parent = markerParent.transform;
+            g.name = $"Marker: {index++}";
+        }
+
+    }
+
+   
     private void SubDivide(ref List<Vector3> _verts, ref List<int> _tris, float radius)
     {
         //copy lists
@@ -119,16 +169,18 @@ public class SphereCreator : MonoBehaviour
         }
     }
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.cyan;
+    
 
-        for (int i = 0; i < vertices.Length; i++)
-        {
-            Gizmos.DrawSphere(vertices[i], 0.1f);
-        }
+        //private void OnDrawGizmos()
+        //{
+        //    Gizmos.color = Color.cyan;
+
+        //    for (int i = 0; i < vertices.Length; i++)
+        //    {
+        //        Gizmos.DrawSphere(vertices[i], 0.1f);
+        //    }
+
+        //}
+
 
     }
-
-
-}
