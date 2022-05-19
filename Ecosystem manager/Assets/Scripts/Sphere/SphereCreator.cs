@@ -6,9 +6,6 @@ public class SphereCreator : MonoBehaviour
 {
     Mesh sphere;
 
-    Vector3[] vertices;
-    Vector3[] normals;
-
     [Range(0,6)]
     public int divides;
     private int prevDivides;
@@ -33,10 +30,6 @@ public class SphereCreator : MonoBehaviour
             splitScript.Split(sphere, Mat, transform.position);
             gameObject.SetActive(false);
         }
-
-        //gizmos
-        vertices = sphere.vertices;
-        normals = sphere.normals;
     }
 
     private void Update()
@@ -86,7 +79,7 @@ public class SphereCreator : MonoBehaviour
 
         for (int i = 0; i < divides; i++)
         {
-            SubDivide(ref verts, ref triangles, radius);
+            SubDivide2(ref verts, ref triangles, radius);
 
         }
 
@@ -96,7 +89,7 @@ public class SphereCreator : MonoBehaviour
 
         GetComponent<MeshCollider>().sharedMesh = sphere;
 
-        PlaceMarkers();
+        PlaceMarkers(0);
     }
 
     private void PlaceMarkers()
@@ -111,9 +104,21 @@ public class SphereCreator : MonoBehaviour
             g.transform.parent = markerParent.transform;
             g.name = $"Marker: {index++}";
         }
-
     }
 
+    private void PlaceMarkers(int subDivides)
+    {
+        GameObject markerParent = new GameObject("Markers");
+        markerParent.transform.parent = transform;
+
+        for (int i = 0; i < 12 * (subDivides + 1); i++)
+        {
+            GameObject g = Instantiate(MarkerSphere, sphere.vertices[i], Quaternion.identity);
+            g.transform.parent = markerParent.transform;
+            g.name = $"Marker: {i}";
+        }
+
+    }
    
     private void SubDivide(ref List<Vector3> _verts, ref List<int> _tris, float radius)
     {
@@ -169,18 +174,64 @@ public class SphereCreator : MonoBehaviour
         }
     }
 
-    
+    private void SubDivide2(ref List<Vector3> _verts, ref List<int> _tris, float radius)
+    {
+        List<Vector3> vertsNew = new List<Vector3>(_verts);
+        List<int> trisNew = new List<int>();
 
-        //private void OnDrawGizmos()
-        //{
-        //    Gizmos.color = Color.cyan;
+        //key: id of both original verts value: id of new mid point
+        Dictionary<(int, int), int> midPoints = new Dictionary<(int, int), int>();
 
-        //    for (int i = 0; i < vertices.Length; i++)
-        //    {
-        //        Gizmos.DrawSphere(vertices[i], 0.1f);
-        //    }
+        int vertCount = vertsNew.Count;
 
-        //}
+        for (int i = 0; i < _tris.Count; i += 3)
+        {
+            //verticies of current triangle
+            Vector3 v1 = _verts[_tris[i]];
+            Vector3 v2 = _verts[_tris[i + 1]];
+            Vector3 v3 = _verts[_tris[i + 2]];
 
+            //ids of the triangle's 3 edges' points
+            (int, int)[] keys = { (_tris[i], _tris[i + 1]), (_tris[i + 1], _tris[i + 2]), (_tris[i], _tris[i + 2]) };
 
+            //if the midpoint hasn't been calculated, calculate and add to verts and the index to the midpoint dict
+            if (!midPoints.ContainsKey(keys[0]))
+            {
+                vertsNew.Add(((v1 + v2) / 2).normalized * radius);
+                midPoints[keys[0]] = vertCount++;
+            }
+            if (!midPoints.ContainsKey(keys[1]))
+            {
+                vertsNew.Add(((v2 + v3) / 2).normalized * radius);
+                midPoints[keys[1]] = vertCount++;
+            }
+            if (!midPoints.ContainsKey(keys[2]))
+            {
+                vertsNew.Add(((v1 + v3) / 2).normalized * radius); 
+                midPoints[keys[2]] = vertCount++;
+            }
+
+            //triangle between bot left and middle left and bottom middle
+            trisNew.Add(_tris[i]);
+            trisNew.Add(midPoints[keys[0]]);
+            trisNew.Add(midPoints[keys[2]]);
+
+            //triangle between top and two middle midpoints
+            trisNew.Add(midPoints[keys[0]]);
+            trisNew.Add(_tris[i+1]);
+            trisNew.Add(midPoints[keys[1]]);
+
+            //triangle between all midpoints
+            trisNew.Add(midPoints[keys[0]]);
+            trisNew.Add(midPoints[keys[1]]);
+            trisNew.Add(midPoints[keys[2]]);
+            
+            //triangle middle bottom and middle right and bottom right
+            trisNew.Add(midPoints[keys[2]]);
+            trisNew.Add(midPoints[keys[1]]);
+            trisNew.Add(_tris[i+2]);
+        }
+        _verts = vertsNew;
+        _tris = trisNew;
     }
+}
