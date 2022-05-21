@@ -8,7 +8,11 @@ public class SphereCreator : MonoBehaviour
 
     [Range(0,6)]
     public int divides;
-    private int prevDivides;
+    private int prevDivides;    //keep track when to build new mesh
+
+    [Header("Hex Tiling")]
+    HexSpherePointMap pointMap;
+    private int divideCount = 1;
 
     [Header("Splitting")]
     public bool Split;
@@ -19,6 +23,8 @@ public class SphereCreator : MonoBehaviour
 
     private void Start()
     {
+        pointMap = new HexSpherePointMap(divides);
+
         BuildMesh(10);
 
         prevDivides = divides;
@@ -30,6 +36,20 @@ public class SphereCreator : MonoBehaviour
             splitScript.Split(sphere, Mat, transform.position);
             gameObject.SetActive(false);
         }
+
+        List<List<int>> pentagons = pointMap.pentagonVertIds();
+
+        List<int> combined = new List<int>();
+
+        foreach (List<int> pentagon in pentagons) 
+        {
+            foreach (var vertId in pentagon)
+            {
+                combined.Add(vertId);
+            }
+        }
+        PlaceMarkers(combined);
+
     }
 
     private void Update()
@@ -80,7 +100,7 @@ public class SphereCreator : MonoBehaviour
         for (int i = 0; i < divides; i++)
         {
             SubDivide2(ref verts, ref triangles, radius);
-
+            divideCount++;
         }
 
         sphere.vertices = verts.ToArray();
@@ -89,7 +109,6 @@ public class SphereCreator : MonoBehaviour
 
         GetComponent<MeshCollider>().sharedMesh = sphere;
 
-        PlaceMarkers(0);
     }
 
     private void PlaceMarkers()
@@ -118,6 +137,20 @@ public class SphereCreator : MonoBehaviour
             g.name = $"Marker: {i}";
         }
 
+    }
+
+    private void PlaceMarkers(List<int> vertIds)
+    {
+        GameObject markerParent = new GameObject("Markers");
+        markerParent.transform.parent = transform;
+
+        int count = 0;
+        foreach(int id in vertIds)
+        {
+            GameObject g = Instantiate(MarkerSphere, sphere.vertices[id], Quaternion.identity);
+            g.transform.parent = markerParent.transform;
+            g.name = $"Marker: {count++}";
+        }
     }
    
     private void SubDivide(ref List<Vector3> _verts, ref List<int> _tris, float radius)
@@ -198,16 +231,19 @@ public class SphereCreator : MonoBehaviour
             if (!midPoints.ContainsKey(keys[0]))
             {
                 vertsNew.Add(((v1 + v2) / 2).normalized * radius);
+                pointMap.AddPoint(vertCount, keys[0], divideCount);
                 midPoints[keys[0]] = vertCount++;
             }
             if (!midPoints.ContainsKey(keys[1]))
             {
                 vertsNew.Add(((v2 + v3) / 2).normalized * radius);
+                pointMap.AddPoint(vertCount, keys[1], divideCount);
                 midPoints[keys[1]] = vertCount++;
             }
             if (!midPoints.ContainsKey(keys[2]))
             {
                 vertsNew.Add(((v1 + v3) / 2).normalized * radius); 
+                pointMap.AddPoint(vertCount, keys[2], divideCount);
                 midPoints[keys[2]] = vertCount++;
             }
 
@@ -234,4 +270,66 @@ public class SphereCreator : MonoBehaviour
         _verts = vertsNew;
         _tris = trisNew;
     }
+}
+
+class HexSpherePointMap
+{
+    public List<HexSpherePoint> points;
+    private int totalSubDivides;
+
+
+    public HexSpherePointMap(int totalSubDivs)
+    {
+        points = new List<HexSpherePoint>();
+        totalSubDivides = totalSubDivs;
+    }
+
+    public void AddPoint(int vertId, (int,int) outerIds, int subdivides)
+    {
+        HexSpherePoint hexPoint = new HexSpherePoint(vertId, outerIds, subdivides);
+        points.Add(hexPoint);
+    }
+
+    public List<List<int>> pentagonVertIds()
+    {
+        List<List<int>> pentagons = new List<List<int>>();
+
+        for(int i = 0; i < 12; i++)
+        {
+            List<int> pentagon = new List<int>();
+            pentagon.Add(i);
+            pentagons.Add(pentagon);
+        }
+
+        foreach (var hexPoint in points)
+        {
+            if(hexPoint.subDivIterations == totalSubDivides)
+            {
+                if(hexPoint.outerPointsIds.Item1 < 12)
+                {
+                    pentagons[hexPoint.outerPointsIds.Item1].Add(hexPoint.vertId);
+                }
+                if (hexPoint.outerPointsIds.Item2 < 12)
+                {
+                    pentagons[hexPoint.outerPointsIds.Item2].Add(hexPoint.vertId);
+                }
+            }
+        }
+        return pentagons;
+    }
+
+}
+
+struct HexSpherePoint
+{
+    public HexSpherePoint(int id, (int,int) outerIds, int subDivs )
+    {
+        vertId = id;
+        outerPointsIds = outerIds;
+        subDivIterations = subDivs;
+    }
+
+    public int vertId;                  //index of vert in mesh verticies list
+    public (int, int) outerPointsIds;   //id's of this vertex outerpoints
+    public int subDivIterations;        //sub division iterations
 }
