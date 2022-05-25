@@ -18,23 +18,23 @@ public class SphereCreator : MonoBehaviour
     public bool Split;
     public Material Mat;
 
-    [Header("Debugging")]
-    public GameObject MarkerSphere;
+    [Header("Vertex Debugging")]
+    private VertexMarker vertexMarker;
+    private int testSubdividesTracker = 0;
 
     private void Start()
     {
         pointMap = new HexSpherePointMap(divides);
+        vertexMarker = GetComponent<VertexMarker>();
 
         BuildMesh(10);
 
+        //track subdivides for change at runtime
         prevDivides = divides;
 
         //spliting the mesh
         if (Split) {
-            GameObject g = new GameObject("Split-Sphere");
-            SplitMesh splitScript = g.AddComponent<SplitMesh>();
-            splitScript.Split(sphere, Mat, transform.position);
-            gameObject.SetActive(false);
+            SplitMesh();
         }
 
         List<List<int>> pentagons = pointMap.pentagonVertIds();
@@ -48,8 +48,10 @@ public class SphereCreator : MonoBehaviour
                 combined.Add(vertId);
             }
         }
-        PlaceMarkers(combined);
 
+
+        //PlaceMarkers(combined);
+        //PlaceMarkers(pointMap.GetVerticesSubdivs(2));
     }
 
     private void Update()
@@ -58,6 +60,14 @@ public class SphereCreator : MonoBehaviour
         {
             BuildMesh(10);
             prevDivides = divides;
+        }
+
+        //places markers at the given subdivide level
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            vertexMarker.PlaceMarkers(pointMap.GetVerticesSubdivs(testSubdividesTracker));
+            Debug.Log($"Marker Sub divides:{testSubdividesTracker}");
+            testSubdividesTracker = (testSubdividesTracker + 1) % (divides + 1);
         }
     }
 
@@ -97,6 +107,11 @@ public class SphereCreator : MonoBehaviour
             triangles[i + 1] = temp;
         }
 
+        for (int i = 0; i < verts.Count; i++)
+        {
+            pointMap.AddPoint(i, (0, 0), 0);
+        }
+
         for (int i = 0; i < divides; i++)
         {
             SubDivide2(ref verts, ref triangles, radius);
@@ -109,49 +124,13 @@ public class SphereCreator : MonoBehaviour
 
         GetComponent<MeshCollider>().sharedMesh = sphere;
 
+        vertexMarker.CurrentMesh = sphere;
+
+        Debug.Log(sphere.vertices.Length);
+        //PlaceMarkers();
     }
 
-    private void PlaceMarkers()
-    {
-        GameObject markerParent = new GameObject("Markers");
-        markerParent.transform.parent = transform;
-
-        int index = 0;
-        foreach (var vert in sphere.vertices)
-        {
-            GameObject g = Instantiate(MarkerSphere,vert,Quaternion.identity);
-            g.transform.parent = markerParent.transform;
-            g.name = $"Marker: {index++}";
-        }
-    }
-
-    private void PlaceMarkers(int subDivides)
-    {
-        GameObject markerParent = new GameObject("Markers");
-        markerParent.transform.parent = transform;
-
-        for (int i = 0; i < 12 * (subDivides + 1); i++)
-        {
-            GameObject g = Instantiate(MarkerSphere, sphere.vertices[i], Quaternion.identity);
-            g.transform.parent = markerParent.transform;
-            g.name = $"Marker: {i}";
-        }
-
-    }
-
-    private void PlaceMarkers(List<int> vertIds)
-    {
-        GameObject markerParent = new GameObject("Markers");
-        markerParent.transform.parent = transform;
-
-        int count = 0;
-        foreach(int id in vertIds)
-        {
-            GameObject g = Instantiate(MarkerSphere, sphere.vertices[id], Quaternion.identity);
-            g.transform.parent = markerParent.transform;
-            g.name = $"Marker: {count++}";
-        }
-    }
+    
    
     private void SubDivide(ref List<Vector3> _verts, ref List<int> _tris, float radius)
     {
@@ -230,21 +209,48 @@ public class SphereCreator : MonoBehaviour
             //if the midpoint hasn't been calculated, calculate and add to verts and the index to the midpoint dict
             if (!midPoints.ContainsKey(keys[0]))
             {
-                vertsNew.Add(((v1 + v2) / 2).normalized * radius);
-                pointMap.AddPoint(vertCount, keys[0], divideCount);
-                midPoints[keys[0]] = vertCount++;
+                Vector3 midPoint = ((v1 + v2) / 2).normalized * radius;
+                int index = vertsNew.IndexOf(midPoint);
+                if (index != -1)
+                {
+                    midPoints[keys[0]] = index;
+                }
+                else
+                {
+                    vertsNew.Add(midPoint);
+                    pointMap.AddPoint(vertCount, keys[0], divideCount);
+                    midPoints[keys[0]] = vertCount++;
+                }         
             }
             if (!midPoints.ContainsKey(keys[1]))
             {
-                vertsNew.Add(((v2 + v3) / 2).normalized * radius);
-                pointMap.AddPoint(vertCount, keys[1], divideCount);
-                midPoints[keys[1]] = vertCount++;
+                Vector3 midPoint = ((v2 + v3) / 2).normalized * radius;
+                int index = vertsNew.IndexOf(midPoint);
+                if (index != -1)
+                {
+                    midPoints[keys[1]] = index;
+                }
+                else
+                {
+                    vertsNew.Add(midPoint);
+                    pointMap.AddPoint(vertCount, keys[1], divideCount);
+                    midPoints[keys[1]] = vertCount++;
+                }            
             }
             if (!midPoints.ContainsKey(keys[2]))
             {
-                vertsNew.Add(((v1 + v3) / 2).normalized * radius); 
-                pointMap.AddPoint(vertCount, keys[2], divideCount);
-                midPoints[keys[2]] = vertCount++;
+                Vector3 midPoint = ((v1 + v3) / 2).normalized * radius;
+                int index = vertsNew.IndexOf(midPoint);
+                if (index != -1)
+                {
+                    midPoints[keys[2]] = index;
+                }
+                else
+                {
+                    vertsNew.Add(midPoint);
+                    pointMap.AddPoint(vertCount, keys[2], divideCount);
+                    midPoints[keys[2]] = vertCount++;
+                }       
             }
 
             //triangle between bot left and middle left and bottom middle
@@ -270,6 +276,15 @@ public class SphereCreator : MonoBehaviour
         _verts = vertsNew;
         _tris = trisNew;
     }
+
+    private void SplitMesh()
+    {
+        GameObject g = new GameObject("Split-Sphere");
+        SplitMesh splitScript = g.AddComponent<SplitMesh>();
+        splitScript.Split(sphere, Mat, transform.position);
+        gameObject.SetActive(false);
+    }
+
 }
 
 class HexSpherePointMap
@@ -318,6 +333,19 @@ class HexSpherePointMap
         return pentagons;
     }
 
+    public List<int> GetVerticesSubdivs(int subDivides)
+    {
+        List<int> verticies = new List<int>();
+
+        foreach(var hexPoint in points)
+        {
+            if(hexPoint.subDivIterations == subDivides)
+            {
+                verticies.Add(hexPoint.vertId);
+            }
+        }
+        return verticies;
+    }
 }
 
 struct HexSpherePoint
