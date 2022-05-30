@@ -184,6 +184,51 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MainCamera: {fileID: 963194227}
+--- !u!1 &535119232
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 535119234}
+  - component: {fileID: 535119233}
+  m_Layer: 0
+  m_Name: ' Hex Sphere'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &535119233
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 535119232}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1734b98c565c693498d4aa91a17717e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mat: {fileID: 2100000, guid: eb022e8e84d706844a91007b15ed0f7a, type: 2}
+  marker: {fileID: 1519815717}
+--- !u!4 &535119234
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 535119232}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -7.5124283, y: -2.9812756, z: 4.6617537}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 7
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -453,7 +498,7 @@ GameObject:
   - component: {fileID: 1519815717}
   - component: {fileID: 1519815716}
   m_Layer: 0
-  m_Name: sphere
+  m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -471,7 +516,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 088c333bb9b8e7f40a5f4004c3222fa8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  divides: 3
+  divides: 2
+  GenerateHexes: 1
+  hexSphere: {fileID: 535119233}
   Split: 0
   Mat: {fileID: 2100000, guid: eb022e8e84d706844a91007b15ed0f7a, type: 2}
 --- !u!23 &1519815712
@@ -666,7 +713,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1913135537}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.11, y: 0.61691284, z: 0.72}
+  m_LocalPosition: {x: -34.69, y: 0.61691284, z: 43.68}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_Children: []
   m_Father: {fileID: 0}

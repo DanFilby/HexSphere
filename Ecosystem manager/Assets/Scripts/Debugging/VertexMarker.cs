@@ -62,4 +62,21 @@ public class VertexMarker : MonoBehaviour
         }
     }
 
+    public void PlaceMarkers(List<List<int>> vertIds)
+    {
+        Destroy(MarkerObj);
+        MarkerObj = new GameObject("Marker Parent Obj");
+        MarkerObj.transform.parent = transform;
+
+        int count = 0;
+        foreach(List<int> vertList in vertIds)
+        {
+            foreach (int id in vertList)
+            {
+                GameObject g = Instantiate(MarkerSphere, currentMesh.vertices[id], Quaternion.identity);
+                g.transform.parent = MarkerObj.transform;
+                g.name = $"Marker: {count++}";
+            }
+        }    
+    }
 }

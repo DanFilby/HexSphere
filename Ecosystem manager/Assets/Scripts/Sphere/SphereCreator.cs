@@ -11,6 +11,8 @@ public class SphereCreator : MonoBehaviour
     private int prevDivides;    //keep track when to build new mesh
 
     [Header("Hex Tiling")]
+    public bool GenerateHexes;
+    public HexSphere hexSphere;
     HexSpherePointMap pointMap;
     private int divideCount = 1;
 
@@ -37,21 +39,12 @@ public class SphereCreator : MonoBehaviour
             SplitMesh();
         }
 
-        List<List<int>> pentagons = pointMap.pentagonVertIds();
-
-        List<int> combined = new List<int>();
-
-        foreach (List<int> pentagon in pentagons) 
-        {
-            foreach (var vertId in pentagon)
-            {
-                combined.Add(vertId);
-            }
+        if (GenerateHexes){
+            CreateHexes();
+            gameObject.GetComponent<MeshRenderer>().enabled = false;
+            //gameObject.SetActive(false);
         }
 
-
-        //PlaceMarkers(combined);
-        //PlaceMarkers(pointMap.GetVerticesSubdivs(2));
     }
 
     private void Update()
@@ -70,6 +63,28 @@ public class SphereCreator : MonoBehaviour
             testSubdividesTracker = (testSubdividesTracker + 1) % (divides + 1);
         }
     }
+
+    private void CreateHexes()
+    {
+        List<List<int>> pentagons = pointMap.pentagonVertIds();
+        List<List<Vector3>> pentagonVerts = new List<List<Vector3>>();
+
+        //change the pentagon vert id to vector3s
+        int listCount = 0;
+        foreach(List<int> pentagon in pentagons)
+        {
+            pentagonVerts.Add(new List<Vector3>(pentagon.Count));
+            foreach (var id in pentagon) 
+            {
+                pentagonVerts[listCount].Add(sphere.vertices[id]);
+            }
+            listCount++;
+        }
+
+        hexSphere.CreateHexSphere(pentagonVerts);
+
+    }
+
 
     private void BuildMesh(float radius)
     {
