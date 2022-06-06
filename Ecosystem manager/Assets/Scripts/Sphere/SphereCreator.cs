@@ -15,6 +15,7 @@ public class SphereCreator : MonoBehaviour
     public HexSphere hexSphere;
     HexSpherePointMap pointMap;
     private int divideCount = 1;
+    private List<int> originalTris;
 
     [Header("Splitting")]
     public bool Split;
@@ -45,7 +46,24 @@ public class SphereCreator : MonoBehaviour
             //gameObject.SetActive(false);
         }
 
+        VertTesting();
+
     }
+
+    private void VertTesting()
+    {
+        List<int> resultingVerts = new List<int>();
+
+        for (int i = 0; i < 12; i++)
+        {
+            List<int> test = new List<int>();
+            test = pointMap.GetVerticesOuterPoint(i);
+            resultingVerts.AddRange(test);
+        }
+    
+        //vertexMarker.PlaceMarkers(resultingVerts);
+    }
+
 
     private void Update()
     {
@@ -58,9 +76,16 @@ public class SphereCreator : MonoBehaviour
         //places markers at the given subdivide level
         if (Input.GetKeyDown(KeyCode.M))
         {
+            vertexMarker.CurrentMesh = sphere;
             vertexMarker.PlaceMarkers(pointMap.GetVerticesSubdivs(testSubdividesTracker));
             Debug.Log($"Marker Sub divides:{testSubdividesTracker}");
             testSubdividesTracker = (testSubdividesTracker + 1) % (divides + 1);
+        }
+
+        if (Input.GetKeyDown(KeyCode.N))
+        {
+            vertexMarker.CurrentMesh = sphere;
+            vertexMarker.PlaceMarkersAllVerts();
         }
     }
 
@@ -81,7 +106,7 @@ public class SphereCreator : MonoBehaviour
             listCount++;
         }
 
-        hexSphere.CreateHexSphere(pentagonVerts);
+        hexSphere.CreateHexSphere(sphere, pointMap, originalTris);
 
     }
 
@@ -114,6 +139,7 @@ public class SphereCreator : MonoBehaviour
             6,1,10, 9,0,11, 9,11,2, 9,2,5, 7,2,11
         };
 
+        originalTris = new List<int>(triangles);
 
         for (int i = 0; i < triangles.Count; i += 3)
         {
@@ -302,10 +328,10 @@ public class SphereCreator : MonoBehaviour
 
 }
 
-class HexSpherePointMap
+public class HexSpherePointMap
 {
     public List<HexSpherePoint> points;
-    private int totalSubDivides;
+    public int totalSubDivides;
 
 
     public HexSpherePointMap(int totalSubDivs)
@@ -361,9 +387,48 @@ class HexSpherePointMap
         }
         return verticies;
     }
+
+    public List<int> GetVerticesOuterPoint(int outerPointId)
+    {
+        List<int> resultVerts = new List<int>();
+
+        foreach (var hexPoint in points)
+        {
+            if (hexPoint.outerPointsIds.Item1 == outerPointId)
+            {
+                resultVerts.Add(hexPoint.vertId);
+            }
+            if (hexPoint.outerPointsIds.Item2 == outerPointId)
+            {
+                resultVerts.Add(hexPoint.vertId);
+            }
+        }
+
+        return resultVerts;
+
+    }
+
+    public List<int> GetVerticesOuterPoints(int id1, int id2)
+    {
+        List<int> resultVerts = new List<int>();
+
+        foreach (var hexPoint in points)
+        {
+            if (hexPoint.outerPointsIds.Item1 == id1 && hexPoint.outerPointsIds.Item2 == id2)
+            {
+                resultVerts.Add(hexPoint.vertId);
+            }
+            if (hexPoint.outerPointsIds.Item1 == id2 && hexPoint.outerPointsIds.Item2 == id1)
+            {
+                resultVerts.Add(hexPoint.vertId);
+            }
+        }
+
+        return resultVerts;
+    }
 }
 
-struct HexSpherePoint
+public struct HexSpherePoint
 {
     public HexSpherePoint(int id, (int,int) outerIds, int subDivs )
     {
