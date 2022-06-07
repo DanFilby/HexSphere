@@ -7,23 +7,23 @@ public class SphereCreator : MonoBehaviour
     Mesh sphere;
 
     [Range(0,6)]
-    public int divides;
+    public int divides;         //times to subdivide the triangles
     private int prevDivides;    //keep track when to build new mesh
 
     [Header("Hex Tiling")]
-    public bool GenerateHexes;
-    public HexSphere hexSphere;
-    HexSpherePointMap pointMap;
-    private int divideCount = 1;
-    private List<int> originalTris;
+    public bool GenerateHexes;  
+    public HexSphere hexSphere;     //script to split up the mesh into hex tiles
+    HexSpherePointMap pointMap;     //keeps track of the verticies
+    private int divideCount = 1;    //used when add verts to point map
+    private List<int> originalTris; //sent to hex script
 
     [Header("Splitting")]
-    public bool Split;
+    public bool Split;      //when the mesh is split by each triangle 
     public Material Mat;
 
     [Header("Vertex Debugging")]
     private VertexMarker vertexMarker;
-    private int testSubdividesTracker = 0;
+    private int debugSubdivideTracker = 0;
 
     private void Start()
     {
@@ -40,33 +40,17 @@ public class SphereCreator : MonoBehaviour
             SplitMesh();
         }
 
+        //create hex tiling
         if (GenerateHexes){
             CreateHexes();
             gameObject.GetComponent<MeshRenderer>().enabled = false;
-            //gameObject.SetActive(false);
         }
 
-        VertTesting();
-
     }
-
-    private void VertTesting()
-    {
-        List<int> resultingVerts = new List<int>();
-
-        for (int i = 0; i < 12; i++)
-        {
-            List<int> test = new List<int>();
-            test = pointMap.GetVerticesOuterPoint(i);
-            resultingVerts.AddRange(test);
-        }
-    
-        //vertexMarker.PlaceMarkers(resultingVerts);
-    }
-
 
     private void Update()
     {
+        //if changed divides in runtime
         if(divides != prevDivides)
         {
             BuildMesh(10);
@@ -77,11 +61,12 @@ public class SphereCreator : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.M))
         {
             vertexMarker.CurrentMesh = sphere;
-            vertexMarker.PlaceMarkers(pointMap.GetVerticesSubdivs(testSubdividesTracker));
-            Debug.Log($"Marker Sub divides:{testSubdividesTracker}");
-            testSubdividesTracker = (testSubdividesTracker + 1) % (divides + 1);
+            vertexMarker.PlaceMarkers(pointMap.GetVerticesSubdivs(debugSubdivideTracker));
+            Debug.Log($"Marker Sub divides:{debugSubdivideTracker}");
+            debugSubdivideTracker = (debugSubdivideTracker + 1) % (divides + 1);
         }
 
+        //shows all verts
         if (Input.GetKeyDown(KeyCode.N))
         {
             vertexMarker.CurrentMesh = sphere;
@@ -89,35 +74,26 @@ public class SphereCreator : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// uses the sphere mesh to create a hex tiled version in a different object
+    /// </summary>
     private void CreateHexes()
     {
-        List<List<int>> pentagons = pointMap.pentagonVertIds();
-        List<List<Vector3>> pentagonVerts = new List<List<Vector3>>();
-
-        //change the pentagon vert id to vector3s
-        int listCount = 0;
-        foreach(List<int> pentagon in pentagons)
-        {
-            pentagonVerts.Add(new List<Vector3>(pentagon.Count));
-            foreach (var id in pentagon) 
-            {
-                pentagonVerts[listCount].Add(sphere.vertices[id]);
-            }
-            listCount++;
-        }
-
+        //send the info to the hex tiling scripts
         hexSphere.CreateHexSphere(sphere, pointMap, originalTris);
-
     }
 
-
+    /// <summary>
+    /// Create a 'spherical' mesh by subdividing a icosahedron
+    /// </summary>
     private void BuildMesh(float radius)
     {
+        //create mesh obj and increase maxium allowed verts
         sphere = new Mesh();
         sphere.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         gameObject.GetComponent<MeshFilter>().mesh = sphere;
 
-        //consts so each point is dist 1 from centre
+        //used to offset each point equally from the centre
         float X = 0.525731112119133606f * radius;
         float Z = 0.850650808352039932f * radius;
 
@@ -130,7 +106,7 @@ public class SphereCreator : MonoBehaviour
             new Vector3(-Z, X, 0.0f), new Vector3(Z, -X, 0.0f), new Vector3(-Z, -X, 0.0f)
         };
 
-        //triangles
+
         List<int> triangles = new List<int>()
         {
             0,4,1, 0,9,4, 9,5,4, 4,5,8, 4,8,1,
@@ -139,8 +115,10 @@ public class SphereCreator : MonoBehaviour
             6,1,10, 9,0,11, 9,11,2, 9,2,5, 7,2,11
         };
 
+        //used later in tiling script
         originalTris = new List<int>(triangles);
 
+        //filps the tris so mesh renders front face
         for (int i = 0; i < triangles.Count; i += 3)
         {
             int temp = triangles[i];
@@ -153,6 +131,7 @@ public class SphereCreator : MonoBehaviour
             pointMap.AddPoint(i, (0, 0), 0);
         }
 
+        //divide the tris 
         for (int i = 0; i < divides; i++)
         {
             SubDivide2(ref verts, ref triangles, radius);
@@ -168,63 +147,6 @@ public class SphereCreator : MonoBehaviour
         vertexMarker.CurrentMesh = sphere;
 
         Debug.Log(sphere.vertices.Length);
-        //PlaceMarkers();
-    }
-
-    
-   
-    private void SubDivide(ref List<Vector3> _verts, ref List<int> _tris, float radius)
-    {
-        //copy lists
-        List<Vector3> verts = new List<Vector3>(_verts);
-        List<int> tris = new List<int>(_tris);
-
-        _verts.Clear();
-        _tris.Clear();
-
-        int triCounter = 0;
-        for (int i = 0; i < tris.Count; i += 3)
-        {
-            //verticies of current triangle
-            Vector3 v1 = verts[tris[i]];
-            Vector3 v2 = verts[tris[i + 1]];
-            Vector3 v3 = verts[tris[i + 2]];
-
-            //find mid points. normalized to push out for a sphere shape
-            Vector3 m1 = (v1 + v2) / 2;
-            m1 = m1.normalized * radius;
-            Vector3 m2 = (v2 + v3) / 2;
-            m2 = m2.normalized * radius;
-            Vector3 m3 = (v1 + v3) / 2;
-            m3 = m3.normalized * radius;
-
-            //add all as new verticies
-            _verts.Add(v1);
-            _verts.Add(m1);
-            _verts.Add(v2);
-            _verts.Add(m2);
-            _verts.Add(v3);
-            _verts.Add(m3);
-
-            //add the new triangles
-            _tris.Add(triCounter);
-            _tris.Add(triCounter + 1);
-            _tris.Add(triCounter + 5);
-
-            _tris.Add(triCounter + 1);
-            _tris.Add(triCounter + 2);
-            _tris.Add(triCounter + 3);
-
-            _tris.Add(triCounter + 1);
-            _tris.Add(triCounter + 3);
-            _tris.Add(triCounter + 5);
-
-            _tris.Add(triCounter + 5);
-            _tris.Add(triCounter + 3);
-            _tris.Add(triCounter + 4);
-
-            triCounter += 6;
-        }
     }
 
     private void SubDivide2(ref List<Vector3> _verts, ref List<int> _tris, float radius)
@@ -232,7 +154,7 @@ public class SphereCreator : MonoBehaviour
         List<Vector3> vertsNew = new List<Vector3>(_verts);
         List<int> trisNew = new List<int>();
 
-        //key: id of both original verts value: id of new mid point
+        //key: id of both original verts | value: id of new mid point
         Dictionary<(int, int), int> midPoints = new Dictionary<(int, int), int>();
 
         int vertCount = vertsNew.Count;
@@ -244,13 +166,15 @@ public class SphereCreator : MonoBehaviour
             Vector3 v2 = _verts[_tris[i + 1]];
             Vector3 v3 = _verts[_tris[i + 2]];
 
-            //ids of the triangle's 3 edges' points
+            //ids of the triangle's 3 sides points
             (int, int)[] keys = { (_tris[i], _tris[i + 1]), (_tris[i + 1], _tris[i + 2]), (_tris[i], _tris[i + 2]) };
 
             //if the midpoint hasn't been calculated, calculate and add to verts and the index to the midpoint dict
             if (!midPoints.ContainsKey(keys[0]))
             {
                 Vector3 midPoint = ((v1 + v2) / 2).normalized * radius;
+
+                //check if the point is already in the new verts list
                 int index = vertsNew.IndexOf(midPoint);
                 if (index != -1)
                 {
@@ -316,6 +240,61 @@ public class SphereCreator : MonoBehaviour
         }
         _verts = vertsNew;
         _tris = trisNew;
+    }
+
+    //original sub divide doesn't remove duplicates or add to point map 
+    private void SubDivide(ref List<Vector3> _verts, ref List<int> _tris, float radius)
+    {
+        //copy lists
+        List<Vector3> verts = new List<Vector3>(_verts);
+        List<int> tris = new List<int>(_tris);
+
+        _verts.Clear();
+        _tris.Clear();
+
+        int triCounter = 0;
+        for (int i = 0; i < tris.Count; i += 3)
+        {
+            //verticies of current triangle
+            Vector3 v1 = verts[tris[i]];
+            Vector3 v2 = verts[tris[i + 1]];
+            Vector3 v3 = verts[tris[i + 2]];
+
+            //find mid points. normalized to push out for a sphere shape
+            Vector3 m1 = (v1 + v2) / 2;
+            m1 = m1.normalized * radius;
+            Vector3 m2 = (v2 + v3) / 2;
+            m2 = m2.normalized * radius;
+            Vector3 m3 = (v1 + v3) / 2;
+            m3 = m3.normalized * radius;
+
+            //add all as new verticies
+            _verts.Add(v1);
+            _verts.Add(m1);
+            _verts.Add(v2);
+            _verts.Add(m2);
+            _verts.Add(v3);
+            _verts.Add(m3);
+
+            //add the new triangles
+            _tris.Add(triCounter);
+            _tris.Add(triCounter + 1);
+            _tris.Add(triCounter + 5);
+
+            _tris.Add(triCounter + 1);
+            _tris.Add(triCounter + 2);
+            _tris.Add(triCounter + 3);
+
+            _tris.Add(triCounter + 1);
+            _tris.Add(triCounter + 3);
+            _tris.Add(triCounter + 5);
+
+            _tris.Add(triCounter + 5);
+            _tris.Add(triCounter + 3);
+            _tris.Add(triCounter + 4);
+
+            triCounter += 6;
+        }
     }
 
     private void SplitMesh()

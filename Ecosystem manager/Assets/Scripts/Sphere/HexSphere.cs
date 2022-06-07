@@ -28,49 +28,44 @@ public class HexSphere : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// finds hexes surrounding the pentagons
+    /// </summary>
+    /// <returns></returns>
     private List<int> FindHexCentres()
     {
         List<int> hexagonCentreIds = new List<int>();
 
-        //for (int i = 0; i < originalTris.Count; i += 3)
-        //{
-        //    int v1 = originalTris[i];
-        //    int v2 = originalTris[i + 1];
-        //    int v3 = originalTris[i + 2];
-
-        //    hexagonCentreIds.AddRange(MidPoints(v1, v2, pointMap.totalSubDivides - 1));
-        //    hexagonCentreIds.AddRange(MidPoints(v1, v3, pointMap.totalSubDivides - 1));
-        //    hexagonCentreIds.AddRange(MidPoints(v2, v3, pointMap.totalSubDivides - 1));
-
-        //    hexagonCentreIds = hexagonCentreIds.Distinct().ToList();
-
-        //    marker.PlaceMarkers(hexagonCentreIds, 1, false);
-        //}
-
         for (int i = 0; i < originalTris.Count; i += 3)
         {
+            //original tri points
             int v1 = originalTris[i];
             int v2 = originalTris[i + 1];
             int v3 = originalTris[i + 2];
 
+            //midpoints
             int m1 = pointMap.GetVerticesOuterPoints(v1, v2)[0];
             int m2 = pointMap.GetVerticesOuterPoints(v1, v3)[0];
             int m3 = pointMap.GetVerticesOuterPoints(v2, v3)[0];
 
+            //returns the hex at the bottom of each triangle
             hexagonCentreIds.Add(HexCentreHelper(v1, m1, m2));
             hexagonCentreIds.Add(HexCentreHelper(v2, m1, m3));
             hexagonCentreIds.Add(HexCentreHelper(v3, m2, m3));
-
-
         }
 
+        //remove duplicates
         hexagonCentreIds = hexagonCentreIds.Distinct().ToList();
 
-        marker.PlaceMarkers(hexagonCentreIds, 1, false);
+        //marker.PlaceMarkers(hexagonCentreIds, 1, false);
 
         return hexagonCentreIds;
     }
 
+    /// <summary>
+    /// Finds the point directly above the triangle of the given vertex. the hexagon centre
+    /// see one note for diagram
+    /// </summary>
     private int HexCentreHelper(int v1, int m1, int m2)
     {
         int m3 = pointMap.GetVerticesOuterPoints(v1, m1)[0];
@@ -118,6 +113,29 @@ public class HexSphere : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// returns all points on the original triangles edges
+    /// </summary>
+    private List<int> FindTriEdgePoints()
+    {
+        List<int> hexagonCentreIds = new List<int>();
+
+        for (int i = 0; i < originalTris.Count; i += 3)
+        {
+            int v1 = originalTris[i];
+            int v2 = originalTris[i + 1];
+            int v3 = originalTris[i + 2];
+
+            hexagonCentreIds.AddRange(MidPoints(v1, v2, pointMap.totalSubDivides - 1));
+            hexagonCentreIds.AddRange(MidPoints(v1, v3, pointMap.totalSubDivides - 1));
+            hexagonCentreIds.AddRange(MidPoints(v2, v3, pointMap.totalSubDivides - 1));
+
+            hexagonCentreIds = hexagonCentreIds.Distinct().ToList();
+        }
+
+        return hexagonCentreIds;
+    }
+
     //recursively find all midpoints between 2 outer points including the subdivided points
     private List<int> MidPoints(int p1, int p2, int subdivides)
     {
@@ -138,14 +156,19 @@ public class HexSphere : MonoBehaviour
         return points;
     }
 
+    /// <summary>
+    /// finds the surrounding points to each hexagon centre
+    /// </summary>
     private List<Vector3> Hexagon(int centreId)
     {
         Vector3 centre = sphere.vertices[centreId];
         List<Vector3> hexagon = new List<Vector3>();
+        hexagon.Add(centre);
 
         foreach(Vector3 vert in sphere.vertices)
         {
             float dist = Vector3.Distance(centre, vert);
+            if(dist < 0.1f) { continue; }   //don't re add centre
             if (dist < distBtwPts * 1.2f)
             {
                 hexagon.Add(vert);
@@ -154,8 +177,9 @@ public class HexSphere : MonoBehaviour
         return hexagon;
     }
 
-
-
+    /// <summary>
+    /// Creates pentagon objects at each of the oringal edges
+    /// </summary>
     private void CreatePentagons()
     {
         List<List<int>> pentagons = pointMap.pentagonVertIds();
@@ -228,6 +252,8 @@ public class HexSphere : MonoBehaviour
             reordered.Add(hex[0]); //add centre and pivot point
             reordered.Add(hex[1]);
 
+            //add negative values in descending order then positive in ascending
+
             List<float> positiveAngles = new List<float>();
             List<float> negativeAnlges = new List<float>();
 
@@ -253,18 +279,14 @@ public class HexSphere : MonoBehaviour
                 reordered.Add(hex[vertAngles[positiveAngles[i]]]);
             }
 
-            reordered.Add(hex[vertAngles[negativeAnlges[1]]]);
-            reordered.Add(hex[vertAngles[negativeAnlges[0]]]);
-            reordered.Add(hex[vertAngles[positiveAngles[1]]]);
-            reordered.Add(hex[vertAngles[positiveAngles[0]]]);
-
-
             clockWiseVerts.Add(reordered);
         }
         return clockWiseVerts;
     }
 
-
+    /// <summary>
+    /// creates a new gameobject holding the given mesh 
+    /// </summary>
     private void CreateMeshObj(Mesh _mesh, Transform _parent, Material _material, string _objName)
     {
         GameObject g = new GameObject(_objName);
